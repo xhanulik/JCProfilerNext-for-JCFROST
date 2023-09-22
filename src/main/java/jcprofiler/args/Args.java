@@ -144,4 +144,46 @@ public class Args {
                description = "Time unit to be used in result visualisation (time profiling only)",
                converter = TimeUnitConverter.class)
     public TimeUnit timeUnit = TimeUnit.micro;
+
+
+    @Parameter(names = {"--threshold"},
+            description = "Threshold")
+    public int threshold;
+
+    @Parameter(names = {"--parties"},
+            description = "Parties")
+    public int parties;
+
+    @Parameter(names = {"--card-index"},
+            description = "Card index")
+    public int cardIndex = -1;
+
+    @Parameter(names = {"--secret"},
+            description = "Secret",
+            converter = ByteArrayConverter.class)
+    public byte[] secret;
+
+    @Parameter(names = {"--point"},
+            description = "Point",
+            converter = ByteArrayConverter.class)
+    public byte[] point;
+
+    @Parameter(names = {"--hiding"},
+            description = "Hiding",
+            converter = ByteArrayConverter.class)
+    public byte[] hiding;
+
+    @Parameter(names = {"--binding"},
+            description = "Binding",
+            converter = ByteArrayConverter.class)
+    public byte[] binding;
+
+    @Parameter(names = {"--participants"},
+            description = "Order of participants",
+            converter = IntArrayConverter.class)
+    public int[] participants;
+
+    @Parameter(names = {"--stage"},
+            description = "Commit~1 / Sign~2")
+    public int stage = 1;
 }

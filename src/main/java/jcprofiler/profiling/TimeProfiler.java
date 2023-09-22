@@ -6,21 +6,26 @@ package jcprofiler.profiling;
 
 import cz.muni.fi.crocs.rcard.client.CardManager;
 import cz.muni.fi.crocs.rcard.client.Util;
-
 import jcprofiler.args.Args;
 import jcprofiler.util.JCProfilerUtil;
-
 import org.apache.commons.csv.CSVPrinter;
-
+import org.bouncycastle.jce.ECNamedCurveTable;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
+import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.bouncycastle.util.encoders.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import spoon.reflect.CtModel;
 
 import javax.smartcardio.CardException;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 import java.io.IOException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.Security;
 import java.util.*;
 
 /**
@@ -43,7 +48,66 @@ public class TimeProfiler extends AbstractProfiler {
      */
     public TimeProfiler(final Args args, final CardManager cardManager, final CtModel model) {
         super(args, cardManager, JCProfilerUtil.getProfiledMethod(model, args.executable),
-              /* customInsField */ "INS_PERF_SETSTOP");
+                /* customInsField */ "INS_PERF_SETSTOP");
+    }
+
+    public byte[] recodePoint(byte[] point) {
+        Security.addProvider(new BouncyCastleProvider());
+        ECNamedCurveParameterSpec spec = ECNamedCurveTable.getParameterSpec("secp256k1");
+        return spec.getCurve().decodePoint(point).getEncoded(false); // TODO change if should use compressed points
+    }
+
+    public int CARD = 1;
+
+    /**
+     * Utility function which will generate random valid ECPoint
+     *
+     * @return ECPoint
+     */
+    public static byte[] randECPoint() throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
+
+        ECParameterSpec ecSpec_named = ECNamedCurveTable.getParameterSpec("secp256k1");
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("ECDSA", "BC");
+        kpg.initialize(ecSpec_named);
+        KeyPair pair = kpg.generateKeyPair();
+        ECPublicKey pub = (ECPublicKey) pair.getPublic();
+        return pub.getQ().getEncoded(true);
+    }
+
+    public static byte[] randSecret() {
+        Random rng = new Random();
+        byte[] buffer = new byte[32];
+        rng.nextBytes(buffer);
+        return buffer;
+    }
+
+    public static int randIndex(int max) {
+        Random rng = new Random();
+        return Math.abs((rng.nextInt() % max)) + 1;
+    }
+
+    public static int[] randParticipants(int include, int size, int max) {
+        ArrayList<Integer> all = new ArrayList<Integer>();
+        for(int i = 0; i < max; ++i) {
+            if (i + 1 == include) {
+                continue;
+            }
+            all.add(i + 1);
+        }
+        Collections.shuffle(all);
+        ArrayList<Integer> result = new ArrayList<Integer>();
+        result.add(include);
+        for(int i = 1; i < size; ++i) {
+            result.add(all.get(i - 1));
+        }
+        Collections.sort(result);
+
+        int[] output = new int[size];
+        for(int i = 0; i < size; ++i) {
+            output[i] = result.get(i);
+        }
+        return output;
     }
 
     /**
@@ -56,13 +120,38 @@ public class TimeProfiler extends AbstractProfiler {
         try {
             // reset if possible and erase any previous performance stop
             resetApplet();
-            setTrap(PERF_START);
+
+            // initialize with INS instruction
+            cardManager.transmit(new CommandAPDU(0, 0, 0, 0));
 
             // main profiling loop
+            setTrap(PERF_START);
             generateInputs(args.repeatCount);
             for (int round = 1; round <= args.repeatCount; round++) {
-                final CommandAPDU triggerAPDU = getInputAPDU(round);
+                // choose either random index or given from arguments
+                CARD = args.cardIndex == -1 ? randIndex(args.parties) : args.cardIndex;
+                System.out.printf("Card index %d\n", CARD);
 
+                // setup secret
+                byte[] secret = args.secret != null ? args.secret : randSecret();
+                byte[] randPoint = args.point != null ? args.point : randECPoint();
+
+                System.out.printf("Secret key %s\n", new String(Hex.encode(secret)));
+                System.out.printf("Point %s\n", new String(Hex.encode(randPoint)));
+                byte[] point = recodePoint(randPoint);
+                System.out.printf("Group key %s\n", new String(Hex.encode(point)));
+                cardManager.transmit(new CommandAPDU(0, 1, args.threshold, args.parties, Util.concat(new byte[]{(byte) CARD}, secret, point)));
+
+                switch (args.stage) {
+                    case 1: // commit
+                        // profiling data should be 'commit' INS and APDU
+                        break;
+                    case 2: // sign
+                        doSign();
+                        break;
+                }
+
+                final CommandAPDU triggerAPDU = getInputAPDU(round);
                 final String input = Util.bytesToHex(triggerAPDU.getBytes());
                 log.info("Round: {}/{} APDU: {}", round, args.repeatCount, input);
                 profileSingleStep(triggerAPDU);
@@ -78,11 +167,36 @@ public class TimeProfiler extends AbstractProfiler {
                 throw new RuntimeException("inputs.size() != " + args.repeatCount);
 
 
-        } catch (CardException e) {
+        } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
 
         log.info("Collecting measurements complete.");
+    }
+
+    private void doSign() throws Exception {
+        // commit
+        byte[] cardData = cardManager.transmit(new CommandAPDU(0, 2, 64, 0)).getData();
+        System.out.printf("Card commitments %s\n", new String(Hex.encode(cardData)));
+
+        // commitments
+        int[] participants = args.participants != null ? args.participants : randParticipants(CARD, args.threshold, args.parties);
+        for (int identifier : participants) {
+            byte[] hiding = Arrays.copyOfRange(cardData, 0, 33);
+            byte[] binding = Arrays.copyOfRange(cardData, 33, 66);
+            if (identifier != CARD) {
+                hiding = args.hiding != null ? args.hiding : randECPoint();
+                binding = args.binding != null ? args.binding : randECPoint();
+                System.out.printf("Card %d hiding %s\n", identifier, new String(Hex.encode(hiding)));
+                System.out.printf("Card %d binding %s\n", identifier, new String(Hex.encode(binding)));
+            }
+            System.out.printf("Party %d commitments %s%s\n", identifier, new String(Hex.encode(hiding)), new String(Hex.encode(binding)));
+            System.out.printf("Sent as data: %s\n", new String(Hex.encode(Util.concat(recodePoint(hiding), recodePoint(binding)))));
+            if (cardManager.transmit(new CommandAPDU(0, 3, identifier, 0, Util.concat(recodePoint(hiding), recodePoint(binding)))).getSW() != 0x9000) {
+                System.out.println("COMMITMENT ERROR!");
+            }
+        }
     }
 
     /**
@@ -97,7 +211,7 @@ public class TimeProfiler extends AbstractProfiler {
         log.debug("Setting next trap to {}.", getTrapName(trapID));
 
         CommandAPDU setTrap = new CommandAPDU(args.cla, JCProfilerUtil.INS_PERF_HANDLER, 0, 0,
-                                              Util.shortToByteArray(trapID));
+                Util.shortToByteArray(trapID));
         ResponseAPDU response = cardManager.transmit(setTrap);
         if (response.getSW() != JCProfilerUtil.SW_NO_ERROR)
             throw new RuntimeException(String.format(
