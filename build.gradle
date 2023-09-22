@@ -10,10 +10,8 @@ plugins {
 group 'org.crocs'
 version '1.0-SNAPSHOT'
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-}
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 repositories {
     mavenCentral()
@@ -29,28 +27,29 @@ dependencies {
     implementation 'fr.inria.gforge.spoon:spoon-core:9.1.0' // last version that supports Java 8
 
     // for logging
-    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'org.slf4j:slf4j-api:2.0.6'
     implementation 'org.apache.logging.log4j:log4j-api:2.20.0'
     implementation 'org.apache.logging.log4j:log4j-core:2.20.0'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0'
 
     // for input generation
     implementation 'com.github.curious-odd-man:rgxgen:1.4'
+    implementation 'org.json:json:20220924'
 
     // applet installation
-    implementation 'org.apache.ant:ant:1.10.14'
-    implementation 'com.github.martinpaljak:ant-javacard:23.08.29'
+    implementation 'org.apache.ant:ant:1.10.13'
+    implementation 'com.github.martinpaljak:ant-javacard:21.12.31'
     implementation 'com.github.martinpaljak:gptool:20.08.12'
 
     // use the latest JNA release to support Apple Silicon MacBooks
-    implementation 'net.java.dev.jna:jna:5.13.0'
+    implementation 'net.java.dev.jna:jna:5.12.1'
 
     // card connection
     implementation 'com.klinec:javacard-tools:1.0.5'
-    implementation 'com.klinec:jcardsim:3.0.6.0'
+    implementation 'com.klinec:jcardsim:3.0.5.11'
 
     // apache commons
-    implementation 'commons-io:commons-io:2.13.0'
+    implementation 'commons-io:commons-io:2.11.0'
     implementation 'org.apache.commons:commons-csv:1.10.0'
     implementation 'org.apache.commons:commons-math3:3.6.1'
     implementation 'org.apache.commons:commons-text:1.10.0'
@@ -59,12 +58,8 @@ dependencies {
     implementation 'org.apache.velocity:velocity-engine-core:2.3'
 
     // unit tests
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
-
-compileJava {
-    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
 }
 
 application {

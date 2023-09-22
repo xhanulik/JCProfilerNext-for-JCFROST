@@ -1,5 +1,4 @@
-JCProfilerNext
-==============
+= JCProfilerNext
 
 **This is extended version of JCProfilerNext for measuring JCFROST applet.**
 
@@ -10,8 +9,7 @@ that provides a completely automated preprocessing, compilation, installation
 and profiling of JavaCard code on JavaCard smart cards or in the jCardSim
 simulator.
 
-Prerequisites
--------------
+== Prerequisites
 * Install JDK 8 or newer.
 * Obtain a copy of the JavaCard Development Kit, e.g. from this link:https://github.com/martinpaljak/oracle_javacard_sdks[GitHub archive] maintained by Martin Paljak.
 
@@ -31,8 +29,7 @@ Prerequisites
 |===
 
 
-Compilation
------------
+== Compilation
 . Clone this repository.
 . Run `./gradlew build` on Unix-like systems or `gradlew.bat build` on Windows.
 . Execute
@@ -40,8 +37,7 @@ Compilation
 .. directly using built JAR: `java -jar build/libs/JCProfilerNext-1.0-SNAPSHOT.jar --help`.
 .. directly from distribution archives in `build/distributions`.
 
-Prepare JCFROST applet source code
-----------------------------------
+== Prepare JCFROST applet source code
 . Clone repo into `./jcfrost` directory: `git clone https://github.com/crocs-muni/JCFROST.git jcfrost`
 . Initialize submodule in `./jcfrost`
 .. `git submodule init`
@@ -49,10 +45,36 @@ Prepare JCFROST applet source code
 . Remove test directory `applet/src/test/` from `jcfrost`
 . setup card type into `CARD_TYPE` variable in JCFROST.java
 
-Options
--------
-...
+== Options
+* `--threshold t`
+* `--parties n`
+* `--card-index i`
+* `--secret secret_share`
+* `--point group_key`
+* `--hiding hiding_commitment` - for two parties only
+* `--binding binding_commitment` - for two parties only
+* `--participants order of participants` - [1, 2, 3, ...]
+* `--stage x`
+** `1` for commit stage
+*** INS: 0x02
+*** P1: 0x00 or data length, when randomness source supplied in DEBUG mode
+*** P2: 0x00
+*** data: -- or randomness source in DEBUG mode
+** `2` for sign stage
+*** INS: 0x04
+*** P1: message length
+*** P2: 0x00
+*** data: message
 
-Run tests
----------
-...
+== Run tests
+=== Profile commit
+[source,language='bash']
+----
+./gradlew run --args="--work-dir jcfrost --jckit ./jcfrost/libs-sdks/jc305u3_kit --cla 00 --ins 0x02 --p1 0x00 --p2 00 --data-regex 00 --entry-point jcfrost.JCFROST --executable jcfrost.FrostSession#commit --repeat-count 100 --threshold 1 --parties 2 --stage 1 --secret 881b1e9437165b85a9f5d059b8a74e3cfa3e886d38d165aeb2d9c88dc6641831 --point 04a628fa933ab0ea90f25ef11b7e493d8a4f8de606222bdbec20afce2f9a9095407ff1f0e0446771a2aa56db75aef16cd5b690747c7550cbe31fb85eebd9bab453"
+----
+
+=== Profile sign
+[source,language='bash']
+----
+ java -jar build/libs/JCProfilerNext-1.0-SNAPSHOT.jar --work-dir jcfrost --jckit ./jcfrost/libs-sdks/jc305u3_kit --cla 00 --ins 04 --p1 04 --p2 00 --data-regex 66726f7374 --entry-point jcfrost.JCFROST --executable jcfrost.FrostSession#sign --repeat-count 5 --threshold 1 --parties 2 --card-index 1 --secret 0e80c801d5e29b7a632a80beb613521b7c7b4669c50abe5b0767d8993602dbc4 --point 036945eaba0daffa1d340790d8eaa424707b6f2936f16fc9c1801e3aadc6da3acc --hiding 036ef1aff145ef38fce5eb0f610c81d6146acb13cfd3bd421b7e5ca4cdc8fcac7d --binding 0240a1a05310be9cac765fd194c1e8afd34150c66344a4ed2cda3fef576198f61c --stage 2
+----

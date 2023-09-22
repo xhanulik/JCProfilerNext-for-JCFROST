@@ -9,7 +9,7 @@ import jcprofiler.args.converters.*;
 import jcprofiler.args.validators.*;
 import jcprofiler.util.enums.*;
 
-import pro.javacard.sdk.JavaCardSDK;
+import pro.javacard.JavaCardSDK;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -80,11 +80,6 @@ public class Args {
                converter = ModeConverter.class)
     public Mode mode = Mode.time;
 
-    @Parameter(names = {"--key"},
-               description = "Key for given card",
-               converter = ByteArrayConverter.class)
-    public byte[] key;
-
     @Parameter(names = {"--custom-pm"},
                description = "Custom PM class (custom profiling only)",
                converter = FilePathConverter.class)
@@ -145,9 +140,8 @@ public class Args {
                converter = TimeUnitConverter.class)
     public TimeUnit timeUnit = TimeUnit.micro;
 
-
     @Parameter(names = {"--threshold"},
-            description = "Threshold")
+               description = "Threshold")
     public int threshold;
 
     @Parameter(names = {"--parties"},

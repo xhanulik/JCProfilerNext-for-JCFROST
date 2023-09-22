@@ -87,8 +87,6 @@ public class Installer {
             gpArgv = ArrayUtils.add(gpArgv, "--debug");
         if (args.installParams != null)
             gpArgv = ArrayUtils.insert(gpArgv.length, gpArgv, "--params", Util.bytesToHex(args.installParams));
-        if (args.key != null)
-            gpArgv = ArrayUtils.insert(gpArgv.length, gpArgv, "--key", Util.bytesToHex(args.key));
 
         // be very careful to not destroy the card!!!
         log.info("Executing GlobalPlatformPro to install {}.", capPath);
@@ -132,9 +130,6 @@ public class Installer {
      */
     private static CardManager configureSimulator(final Args args, final CtClass<?> entryPoint) {
         log.info("Configuring jCardSim simulator.");
-
-        // assure jCardsSim compatibility with newer bouncycastle
-        System.setProperty("com.licel.jcardsim.bouncycastle.rsa.allow_unsafe_mod", "true");
 
         // get path to JAR archive
         final Path jarPath = JCProfilerUtil.getAppletOutputDirectory(args.workDir)
@@ -184,7 +179,7 @@ public class Installer {
 
             // Simulator may print unrelated messages to stdout during initialization (happens with JCMathLib)
             final PrintStream stdout = System.out;
-            System.setOut(new PrintStream(NullOutputStream.INSTANCE));
+            System.setOut(new PrintStream(NullOutputStream.NULL_OUTPUT_STREAM));
 
             log.debug("Connecting to jCardSim simulator.");
             boolean ret = cardManager.connect(runCfg);

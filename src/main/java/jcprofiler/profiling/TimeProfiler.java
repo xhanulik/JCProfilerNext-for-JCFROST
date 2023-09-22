@@ -48,7 +48,7 @@ public class TimeProfiler extends AbstractProfiler {
      */
     public TimeProfiler(final Args args, final CardManager cardManager, final CtModel model) {
         super(args, cardManager, JCProfilerUtil.getProfiledMethod(model, args.executable),
-                /* customInsField */ "INS_PERF_SETSTOP");
+              /* customInsField */ "INS_PERF_SETSTOP");
     }
 
     public byte[] recodePoint(byte[] point) {
@@ -136,10 +136,10 @@ public class TimeProfiler extends AbstractProfiler {
                 byte[] secret = args.secret != null ? args.secret : randSecret();
                 byte[] randPoint = args.point != null ? args.point : randECPoint();
 
-                System.out.printf("Secret key %s\n", new String(Hex.encode(secret)));
-                System.out.printf("Point %s\n", new String(Hex.encode(randPoint)));
+                System.out.printf("Secret share for card %d: %s\n", CARD, new String(Hex.encode(secret)));
+                System.out.printf("Public point %s\n", new String(Hex.encode(randPoint)));
                 byte[] point = recodePoint(randPoint);
-                System.out.printf("Group key %s\n", new String(Hex.encode(point)));
+                System.out.printf("-- Public group key %s\n", new String(Hex.encode(point)));
                 cardManager.transmit(new CommandAPDU(0, 1, args.threshold, args.parties, Util.concat(new byte[]{(byte) CARD}, secret, point)));
 
                 switch (args.stage) {
@@ -178,21 +178,21 @@ public class TimeProfiler extends AbstractProfiler {
     private void doSign() throws Exception {
         // commit
         byte[] cardData = cardManager.transmit(new CommandAPDU(0, 2, 64, 0)).getData();
-        System.out.printf("Card commitments %s\n", new String(Hex.encode(cardData)));
+        System.out.printf("Card %d commitments %s\n", CARD, new String(Hex.encode(cardData)));
 
         // commitments
         int[] participants = args.participants != null ? args.participants : randParticipants(CARD, args.threshold, args.parties);
         for (int identifier : participants) {
             byte[] hiding = Arrays.copyOfRange(cardData, 0, 33);
             byte[] binding = Arrays.copyOfRange(cardData, 33, 66);
-            if (identifier != CARD) {
+            if (identifier != CARD) { // set hiding and binding commitment for second card
                 hiding = args.hiding != null ? args.hiding : randECPoint();
                 binding = args.binding != null ? args.binding : randECPoint();
-                System.out.printf("Card %d hiding %s\n", identifier, new String(Hex.encode(hiding)));
-                System.out.printf("Card %d binding %s\n", identifier, new String(Hex.encode(binding)));
             }
-            System.out.printf("Party %d commitments %s%s\n", identifier, new String(Hex.encode(hiding)), new String(Hex.encode(binding)));
-            System.out.printf("Sent as data: %s\n", new String(Hex.encode(Util.concat(recodePoint(hiding), recodePoint(binding)))));
+            System.out.printf("Card %d hiding commitment (public) %s\n", identifier, new String(Hex.encode(hiding)));
+            System.out.printf("Card %d binding commitment (public) %s\n", identifier, new String(Hex.encode(binding)));
+            System.out.printf("Card %d sends public commitments to %d: %s\n", identifier, CARD,
+                    new String(Hex.encode(Util.concat(recodePoint(hiding), recodePoint(binding)))));
             if (cardManager.transmit(new CommandAPDU(0, 3, identifier, 0, Util.concat(recodePoint(hiding), recodePoint(binding)))).getSW() != 0x9000) {
                 System.out.println("COMMITMENT ERROR!");
             }
@@ -211,7 +211,7 @@ public class TimeProfiler extends AbstractProfiler {
         log.debug("Setting next trap to {}.", getTrapName(trapID));
 
         CommandAPDU setTrap = new CommandAPDU(args.cla, JCProfilerUtil.INS_PERF_HANDLER, 0, 0,
-                Util.shortToByteArray(trapID));
+                                              Util.shortToByteArray(trapID));
         ResponseAPDU response = cardManager.transmit(setTrap);
         if (response.getSW() != JCProfilerUtil.SW_NO_ERROR)
             throw new RuntimeException(String.format(
