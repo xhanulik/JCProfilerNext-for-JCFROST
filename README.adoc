@@ -46,7 +46,8 @@ Prepare JCFROST applet source code
 . Initialize submodule in `./jcfrost`
 .. `git submodule init`
 .. `git submodule update`
-. Remove test directory from `jcfrost`
+. Remove test directory `applet/src/test/` from `jcfrost`
+. setup card type into `CARD_TYPE` variable in JCFROST.java
 
 Options
 -------
