@@ -139,7 +139,7 @@ public class TimeProfiler extends AbstractProfiler {
                 System.out.printf("Secret share for card %d: %s\n", CARD, new String(Hex.encode(secret)));
                 System.out.printf("Public point %s\n", new String(Hex.encode(randPoint)));
                 byte[] point = recodePoint(randPoint);
-                System.out.printf("-- Public group key %s\n", new String(Hex.encode(point)));
+                System.out.printf("(Public group key encoded %s\n", new String(Hex.encode(point)));
                 cardManager.transmit(new CommandAPDU(0, 1, args.threshold, args.parties, Util.concat(new byte[]{(byte) CARD}, secret, point)));
 
                 switch (args.stage) {
@@ -177,24 +177,54 @@ public class TimeProfiler extends AbstractProfiler {
 
     private void doSign() throws Exception {
         // commit
-        byte[] cardData = cardManager.transmit(new CommandAPDU(0, 2, 64, 0)).getData();
+        byte[] cardData;
+        if (args.hidingNonce != null && args.bindingNonce != null) {
+            // set DEBUG randomness from command line arguments
+            byte[] hidingNonceRandomness = args.hidingNonce;
+            byte[] bindingNonceRandomness = args.bindingNonce;
+            assert(hidingNonceRandomness.length == 32 && bindingNonceRandomness.length == 32);
+            ResponseAPDU response = cardManager.transmit(new CommandAPDU(0, 2, 64, 0,
+                    Util.concat(hidingNonceRandomness, bindingNonceRandomness)));
+            if (response.getSW() != 0x9000) {
+                System.out.printf("Card %d commit APDU failed %s\n", CARD, Util.bytesToHex(response.getBytes()));
+            }
+            cardData = response.getData();
+        } else {
+            // nonce will be generated on card
+            cardData = cardManager.transmit(new CommandAPDU(0, 2, 0, 0)).getData();
+        }
         System.out.printf("Card %d commitments %s\n", CARD, new String(Hex.encode(cardData)));
 
         // commitments
+        int commitmentHidingIndex = 0;
+        int commitmentBindingIndex = 0;
         int[] participants = args.participants != null ? args.participants : randParticipants(CARD, args.threshold, args.parties);
         for (int identifier : participants) {
             byte[] hiding = Arrays.copyOfRange(cardData, 0, 33);
             byte[] binding = Arrays.copyOfRange(cardData, 33, 66);
-            if (identifier != CARD) { // set hiding and binding commitment for second card
-                hiding = args.hiding != null ? args.hiding : randECPoint();
-                binding = args.binding != null ? args.binding : randECPoint();
+            if (identifier != CARD) { // setup commitments send from other parties
+                if (args.hidingCommitments != null) { // if supplied as command line argument, setup directly
+                    hiding = args.hidingCommitments[commitmentHidingIndex];
+                    commitmentHidingIndex++;
+                } else { // otherwise generate random
+                    hiding = randECPoint();
+                }
+
+                if (args.bindingCommitments != null) {
+                    binding = args.bindingCommitments[commitmentBindingIndex];
+                    commitmentBindingIndex++;
+                } else {
+                    binding = randECPoint();
+                }
             }
+            // print commitment in hex
             System.out.printf("Card %d hiding commitment (public) %s\n", identifier, new String(Hex.encode(hiding)));
             System.out.printf("Card %d binding commitment (public) %s\n", identifier, new String(Hex.encode(binding)));
             System.out.printf("Card %d sends public commitments to %d: %s\n", identifier, CARD,
                     new String(Hex.encode(Util.concat(recodePoint(hiding), recodePoint(binding)))));
-            if (cardManager.transmit(new CommandAPDU(0, 3, identifier, 0, Util.concat(recodePoint(hiding), recodePoint(binding)))).getSW() != 0x9000) {
-                System.out.println("COMMITMENT ERROR!");
+            ResponseAPDU response = cardManager.transmit(new CommandAPDU(0, 3, identifier, 0, Util.concat(recodePoint(hiding), recodePoint(binding))));
+            if (response.getSW() != 0x9000) {
+                System.out.printf("Card %d commitment APDU failed %s\n", CARD, Util.bytesToHex(response.getBytes()));
             }
         }
     }

@@ -141,43 +141,53 @@ public class Args {
     public TimeUnit timeUnit = TimeUnit.micro;
 
     @Parameter(names = {"--threshold"},
-               description = "Threshold")
+               description = "Threshold t")
     public int threshold;
 
     @Parameter(names = {"--parties"},
-            description = "Parties")
+            description = "Parties n")
     public int parties;
 
     @Parameter(names = {"--card-index"},
-            description = "Card index")
+            description = "Card index (random if not specified)")
     public int cardIndex = -1;
 
     @Parameter(names = {"--secret"},
-            description = "Secret",
+            description = "Secret share for card, 32 B",
             converter = ByteArrayConverter.class)
     public byte[] secret;
 
     @Parameter(names = {"--point"},
-            description = "Point",
+            description = "Group point (group public key)",
             converter = ByteArrayConverter.class)
     public byte[] point;
 
-    @Parameter(names = {"--hiding"},
-            description = "Hiding",
-            converter = ByteArrayConverter.class)
-    public byte[] hiding;
-
-    @Parameter(names = {"--binding"},
-            description = "Binding",
-            converter = ByteArrayConverter.class)
-    public byte[] binding;
-
     @Parameter(names = {"--participants"},
-            description = "Order of participants",
+            description = "Order of participants (array as [1,2,3]",
             converter = IntArrayConverter.class)
     public int[] participants;
 
     @Parameter(names = {"--stage"},
             description = "Commit~1 / Sign~2")
     public int stage = 1;
+
+    @Parameter(names = {"--hiding-nonce"},
+            description = "Hiding nonce randomness 32B",
+            converter = ByteArrayConverter.class)
+    public byte[] hidingNonce;
+
+    @Parameter(names = {"--binding-nonce"},
+            description = "Binding nonce randomness 32B",
+            converter = ByteArrayConverter.class)
+    public byte[] bindingNonce;
+
+    @Parameter(names = {"--hiding-commitments"},
+            description = "Array of public hiding point commitments",
+            converter = HexArrayConverter.class)
+    public byte[][] hidingCommitments;
+
+    @Parameter(names = {"--binding-commitments"},
+            description = "Array of public binding point commitments",
+            converter = HexArrayConverter.class)
+    public byte[][] bindingCommitments;
 }
