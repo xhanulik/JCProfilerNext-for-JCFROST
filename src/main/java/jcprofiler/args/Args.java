@@ -190,4 +190,8 @@ public class Args {
             description = "Array of public binding point commitments",
             converter = HexArrayConverter.class)
     public byte[][] bindingCommitments;
+
+    @Parameter(names = {"--output"},
+            description = "Print output")
+    public boolean output = false;
 }

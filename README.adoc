@@ -51,15 +51,28 @@ simulator.
 * `--card-index i`
 * `--secret secret_share`
 * `--point group_key`
-* `--hiding hiding_commitment` - for two parties only
-* `--binding binding_commitment` - for two parties only
+* `--hiding hiding_randomness` - randomness used in JCFROST to generate hiding nonce (DEBUG in JCFROST.java must be set to `true`)
+* `--binding binding_randomness` - randomness used in JCFROST to generate binding nonce (DEBUG in JCFROST.java must be set to `true`)
+* `--hiding-commitments "[commitment_1, commitment_2,...]"`
+* `--binding-commitments "[commitment_1, commitment_2,...]"`
 * `--participants order of participants` - [1, 2, 3, ...]
 * `--stage x`
-** `1` for commit stage
-*** INS: 0x02
-*** P1: 0x00 or data length, when randomness source supplied in DEBUG mode
-*** P2: 0x00
-*** data: -- or randomness source in DEBUG mode
+** `1` for non-sign stage
+*** _commit_
+**** INS: 0x02
+**** P1: 0x00
+**** P2: 0x00
+**** data: -- or randomness source in DEBUG mode
+*** _simplified sign_ - only for preset values
+**** INS: 0x06
+**** P1: 0x00
+**** P2: 0x00
+**** data: `lambda [32B] | challenge [32B] | hiding nonce [32B] | binding nonce [32B] | binding factor [32B] | message`
+*** _oneshot sign_ - only for 1-of-2 signaturey
+**** INS: 0x08
+**** P1: 0x00
+**** P2: 0x00
+**** data: `secret | point | hiding nonce | binding nonce`
 ** `2` for sign stage
 *** INS: 0x04
 *** P1: message length

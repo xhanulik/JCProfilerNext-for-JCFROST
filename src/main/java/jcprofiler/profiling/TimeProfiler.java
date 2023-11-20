@@ -132,7 +132,7 @@ public class TimeProfiler extends AbstractProfiler {
                 CARD = args.cardIndex == -1 ? randIndex(args.parties) : args.cardIndex;
                 System.out.printf("Card index %d\n", CARD);
 
-                // setup secret
+                // setup secret either from arguments or generate random when not supplied
                 byte[] secret = args.secret != null ? args.secret : randSecret();
                 byte[] randPoint = args.point != null ? args.point : randECPoint();
 
@@ -140,11 +140,15 @@ public class TimeProfiler extends AbstractProfiler {
                 System.out.printf("Public point %s\n", new String(Hex.encode(randPoint)));
                 byte[] point = recodePoint(randPoint);
                 System.out.printf("(Public group key encoded %s\n", new String(Hex.encode(point)));
+
+                // Send secret and point to the card
                 cardManager.transmit(new CommandAPDU(0, 1, args.threshold, args.parties, Util.concat(new byte[]{(byte) CARD}, secret, point)));
 
                 switch (args.stage) {
                     case 1: // commit
-                        // profiling data should be 'commit' INS and APDU
+                        // a) profiling data should be 'commit' INS and APDU
+                        // b) artificial sign (INS: 06)
+                        // c) computing lambda and challenge (INS: 07)
                         break;
                     case 2: // sign
                         doSign();
@@ -179,7 +183,7 @@ public class TimeProfiler extends AbstractProfiler {
         // commit
         byte[] cardData;
         if (args.hidingNonce != null && args.bindingNonce != null) {
-            // set DEBUG randomness from command line arguments
+            // set DEBUG randomness from command line arguments - only when DEBUG = true in JCFROST.java
             byte[] hidingNonceRandomness = args.hidingNonce;
             byte[] bindingNonceRandomness = args.bindingNonce;
             assert(hidingNonceRandomness.length == 32 && bindingNonceRandomness.length == 32);
@@ -190,8 +194,19 @@ public class TimeProfiler extends AbstractProfiler {
             }
             cardData = response.getData();
         } else {
-            // nonce will be generated on card
-            cardData = cardManager.transmit(new CommandAPDU(0, 2, 0, 0)).getData();
+            // randomness generation in here in JCProfilerNext and print out - only when DEBUG = true in JCFROST.java
+            // when no DEBUG, nonces are generated on the card and cannot be printed out
+            byte[] hidingNonceRandomness = randSecret();
+            byte[] bindingNonceRandomness = randSecret();
+            assert(hidingNonceRandomness.length == 32 && bindingNonceRandomness.length == 32);
+            System.out.printf("Card %d hiding randomness %s\n", CARD, new String(Hex.encode(hidingNonceRandomness)));
+            System.out.printf("Card %d binding randomness %s\n", CARD, new String(Hex.encode(bindingNonceRandomness)));
+            ResponseAPDU response = cardManager.transmit(new CommandAPDU(0, 2, 64, 0,
+                    Util.concat(hidingNonceRandomness, bindingNonceRandomness)));
+            if (response.getSW() != 0x9000) {
+                System.out.printf("Card %d commit APDU failed %s\n", CARD, Util.bytesToHex(response.getBytes()));
+            }
+            cardData = response.getData();
         }
         System.out.printf("Card %d commitments %s\n", CARD, new String(Hex.encode(cardData)));
 
@@ -269,6 +284,8 @@ public class TimeProfiler extends AbstractProfiler {
             final String trapName = getTrapName(trapID);
             log.debug("Measuring {}.", trapName);
             final ResponseAPDU response = cardManager.transmit(triggerAPDU);
+            if (args.output)
+                System.out.printf("Response data %d: %s\n", response.getData().length, new String(Hex.encode(response.getData())));
 
             // SW should be equal to the trap ID
             final int SW = response.getSW();
