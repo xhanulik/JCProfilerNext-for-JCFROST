@@ -31,6 +31,9 @@ simulator.
 
 == Compilation
 . Clone this repository.
+. Initialize submodule in `libs-sdks`
+.. `git submodule init`
+.. `git submodule update`
 . Run `./gradlew build` on Unix-like systems or `gradlew.bat build` on Windows.
 . Execute
 .. directly using Gradle: `./gradlew run --args='--help'`.
@@ -39,9 +42,6 @@ simulator.
 
 == Prepare JCFROST applet source code
 . Clone repo into `./jcfrost` directory: `git clone https://github.com/crocs-muni/JCFROST.git jcfrost`
-. Initialize submodule in `./jcfrost`
-.. `git submodule init`
-.. `git submodule update`
 . Remove test directory `applet/src/test/` from `jcfrost`
 . setup card type into `CARD_TYPE` variable in JCFROST.java
 . or use prepared repo `https://github.com/xhanulik/JCFROST/tree/profiling`
