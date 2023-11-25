@@ -44,6 +44,8 @@ simulator.
 .. `git submodule update`
 . Remove test directory `applet/src/test/` from `jcfrost`
 . setup card type into `CARD_TYPE` variable in JCFROST.java
+. or use prepared repo `https://github.com/xhanulik/JCFROST/tree/profiling`
+. run as `java -jar build/libs/JCProfilerNext-1.0-SNAPSHOT.jar --work-dir jcfrost --jckit ./jcfrost/libs-sdks/jc304_kit [options]`
 
 == Options
 * `--threshold t`
@@ -63,16 +65,6 @@ simulator.
 **** P1: 0x00
 **** P2: 0x00
 **** data: -- or randomness source in DEBUG mode
-*** _simplified sign_ - only for preset values
-**** INS: 0x06
-**** P1: 0x00
-**** P2: 0x00
-**** data: `lambda [32B] | challenge [32B] | hiding nonce [32B] | binding nonce [32B] | binding factor [32B] | message`
-*** _oneshot sign_ - only for 1-of-2 signaturey
-**** INS: 0x08
-**** P1: 0x00
-**** P2: 0x00
-**** data: `secret | point | hiding nonce | binding nonce`
 ** `2` for sign stage
 *** INS: 0x04
 *** P1: message length
